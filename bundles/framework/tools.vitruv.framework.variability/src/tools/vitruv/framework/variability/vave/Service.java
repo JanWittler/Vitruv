@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.List;
 import tools.vitruv.framework.change.description.ConcreteChange;
 
-interface Management {
+public interface Service {
 	 
 ///////////////PROBLEM SPACE API////////////////
 	 
