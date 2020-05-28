@@ -5,6 +5,8 @@ Bundle-SymbolicName: tools.vitruv.framework.variability
 Bundle-Version: 0.3.0.qualifier
 Automatic-Module-Name: tools.vitruv.framework.variability
 Bundle-RequiredExecutionEnvironment: JavaSE-11
-Require-Bundle: tools.vitruv.framework.change
+Require-Bundle: tools.vitruv.framework.change,
+ org.eclipse.emf.ecore.xmi,
+ edu.kit.ipd.sdq.vavemodel;bundle-version="1.0.0"
 Export-Package: tools.vitruv.framework.variability.vave,
  tools.vitruv.framework.variability.vave.impl
