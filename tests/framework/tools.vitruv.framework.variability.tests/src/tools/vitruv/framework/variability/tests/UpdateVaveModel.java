@@ -8,8 +8,8 @@ public class UpdateVaveModel {
 	VaveModel vavemodel = new VaveModel();
 	
 	@Test
-	public void addRootFeature()  {
-		vavemodel.addRootFeature("Root");
+	public void addRootFeatureLocal()  {
+		vavemodel.addRootFeatureLocal("Root");
 	}
 
 }

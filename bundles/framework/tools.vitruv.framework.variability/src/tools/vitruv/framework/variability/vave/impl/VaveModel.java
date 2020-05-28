@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.emf.common.util.EList;
+import org.eclipse.emf.common.util.TreeIterator;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
@@ -22,8 +23,24 @@ import vavemodel.VavemodelFactory;
 
 public class VaveModel implements VaVeService {
 	
-	@Override
-	public void addRootFeature(String featureName) {
+	public VaveModel() {
+	}
+	
+	public VaveModel(Resource vaveResource, String systemName) {
+		loadVave(vaveResource, systemName);
+	}
+	
+	private void loadVave(Resource vaveResource, String systemName) {
+		try {
+			vaveResource.load(null);
+		} catch (IOException e) {
+		  }
+		vavemodel.System system = VavemodelFactory.eINSTANCE.createSystem();
+		vaveResource.getContents().add(system);
+		system.setName(systemName);
+	}
+	
+	public void addRootFeatureLocal(String featureName) {
 		Resource vaveRes = createAndAddResource();
 		vavemodel.System system = VavemodelFactory.eINSTANCE.createSystem();
 		vaveRes.getContents().add(system);
@@ -35,6 +52,22 @@ public class VaveModel implements VaVeService {
 			((EList) system.eGet(rootVariantFeature)).add(rootVariant);
 		}
 		saveResource(vaveRes);
+	}
+	
+	@Override
+	public void addRootFeature(String featureName, String systemName, Resource vaveResource) {
+		try {
+			vaveResource.load(null);
+		} catch (IOException e) {
+		}
+		EObject childElementIn = findFeature(vaveResource, systemName);
+		Variant rootVariant = VavemodelFactory.eINSTANCE.createVariant();
+		rootVariant.setName(featureName);
+		EStructuralFeature rootVariantFeature = getStructuralFeatureValue(childElementIn, "name", "variant");
+		if (rootVariant != null) {
+			((EList) childElementIn.eGet(rootVariantFeature)).add(rootVariant);
+		}
+		saveResource(vaveResource);
 	}
 
 	@Override
@@ -107,6 +140,24 @@ public class VaveModel implements VaVeService {
 		} catch (NullPointerException e) {
 			java.lang.System.out.println(e.getMessage());
 		}
+		return attr;
+	}
+	
+	private EObject findFeature(Resource vaveRes, String featureName) {
+		TreeIterator<EObject> iterator = vaveRes.getAllContents();
+		EObject childElementIn = null;
+		while (iterator.hasNext()) {
+			childElementIn = iterator.next();
+			if (childElementIn != null && childElementIn.eClass().getName().equals("Variant")) {
+				if (getFeatureValue(childElementIn, "name").toString().equals(featureName))
+					break;
+			}
+		}
+		return childElementIn;
+	}
+	
+	private static Object getFeatureValue(EObject object, String attrName) {
+		Object attr = object.eGet(object.eClass().getEStructuralFeature(attrName));
 		return attr;
 	}
 	

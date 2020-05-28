@@ -174,6 +174,32 @@ public class FileSystemHelper {
         return this.vsumProjectFolder;
     }
 
+    public VURI getVaveVURI() {
+        File vaveFile = getVaveFile();
+        return VURI.getInstance(EMFBridge.getEmfFileUriForFile(vaveFile));
+    }
+
+    public File getVaveFile() {
+        String fileName = getVaveFileName();
+        return getVaveFile(fileName);
+    }
+
+    private static String getVaveFileName() {
+        String fileExtSeparator = VitruviusConstants.getFileExtSeparator();
+        String fileExt = VitruviusConstants.getVaVeFileExt();
+        String fileName = "vave" + fileExtSeparator + fileExt;
+        return fileName;
+    }
+
+    public File getVaveFile(final String fileName) {
+        File vaveFile = getFileInFolder(getVaveFolder(), fileName);
+        return vaveFile;
+    }
+
+    private File getVaveFolder() {
+        return getFolderInFolder(getVsumProjectFolder(), VsumConstants.VAVE_FOLDER_NAME);
+    }
+
     // private void deleteAndRecreateProject(final IProject vsumProject) {
     // try {
     // vsumProject.delete(true, new NullProgressMonitor());

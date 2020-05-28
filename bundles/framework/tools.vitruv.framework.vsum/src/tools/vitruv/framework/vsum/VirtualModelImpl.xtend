@@ -101,6 +101,7 @@ class VirtualModelImpl implements InternalVirtualModel {
 		// Save is done by the change propagator because it has to be performed before finishing sync
 		val result = changePropagator.propagateChange(change)
 		informPropagatedChangeListeners(result)
+		setupVave(result)
 		return result
 	}
 
@@ -165,6 +166,10 @@ class VirtualModelImpl implements InternalVirtualModel {
 		this.propagatedChangeListeners.add(propagatedChangeListener)
 	}
 
+	override getVaveModel() {
+		this.resourceRepository.getVaveModel();
+	}
+	
 	/**
 	 * Removes a given {@link PropagatedChangeListener}. 
 	 * Does nothing if the listener was not registered before.
@@ -213,5 +218,10 @@ class VirtualModelImpl implements InternalVirtualModel {
 	private def boolean isValid(Resource currentState, Resource newState) {
 		newState.resourceSet.URIConverter.exists(currentState.URI, Collections.emptyMap)
 	}
+	
+	private def setupVave(List<PropagatedChange> change) {
+		
+	}
+	
 
 }

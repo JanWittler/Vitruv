@@ -6,6 +6,7 @@ import org.eclipse.emf.ecore.EObject
 import java.util.concurrent.Callable
 import tools.vitruv.framework.vsum.modelsynchronization.ChangePropagationListener
 import tools.vitruv.framework.userinteraction.UserInteractor
+import tools.vitruv.framework.variability.vave.impl.VaveModel;
 
 interface InternalVirtualModel extends VirtualModel {
 	def CorrespondenceModel getCorrespondenceModel();
@@ -16,4 +17,5 @@ interface InternalVirtualModel extends VirtualModel {
 	def void setUserInteractor(UserInteractor userInteractor);
 	def void addPropagatedChangeListener(PropagatedChangeListener propagatedChangeListener);
 	def void removePropagatedChangeListener(PropagatedChangeListener propagatedChangeListener);
+    def VaveModel getVaveModel();
 }

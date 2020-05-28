@@ -44,7 +44,9 @@ import tools.vitruv.framework.util.datatypes.VURI;
 import tools.vitruv.framework.uuid.UuidGeneratorAndResolver;
 import tools.vitruv.framework.uuid.UuidGeneratorAndResolverImpl;
 import tools.vitruv.framework.uuid.UuidResolver;
+import tools.vitruv.framework.variability.vave.impl.VaveModel;
 import tools.vitruv.framework.vsum.ModelRepository;
+import tools.vitruv.framework.vsum.VsumConstants;
 import tools.vitruv.framework.vsum.helper.FileSystemHelper;
 
 public class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding {
@@ -57,6 +59,7 @@ public class ResourceRepositoryImpl implements ModelRepository, CorrespondencePr
     private InternalCorrespondenceModel correspondenceModel;
     private final FileSystemHelper fileSystemHelper;
     private final File folder;
+    private VaveModel vaveModel;
 
     private UuidGeneratorAndResolver uuidGeneratorAndResolver;
     private final Map<VitruvDomain, AtomicEmfChangeRecorder> domainToRecorder;
@@ -66,12 +69,13 @@ public class ResourceRepositoryImpl implements ModelRepository, CorrespondencePr
         return this.uuidGeneratorAndResolver;
     }
 
-    public ResourceRepositoryImpl(final File folder, final VitruvDomainRepository metamodelRepository) {
+    public ResourceRepositoryImpl(final File folder, final VitruvDomainRepository metamodelRepository)
+            throws IOException {
         this(folder, metamodelRepository, null);
     }
 
     public ResourceRepositoryImpl(final File folder, final VitruvDomainRepository metamodelRepository,
-            final ClassLoader classLoader) {
+            final ClassLoader classLoader) throws IOException {
         this.metamodelRepository = metamodelRepository;
         this.folder = folder;
 
@@ -85,6 +89,7 @@ public class ResourceRepositoryImpl implements ModelRepository, CorrespondencePr
         this.domainToRecorder = new HashMap<VitruvDomain, AtomicEmfChangeRecorder>();
 
         initializeCorrespondenceModel();
+        // initializeVaveModel(); // if commented out, currently vsum tests fail
         loadVURIsOfVSMUModelInstances();
     }
 
@@ -501,6 +506,26 @@ public class ResourceRepositoryImpl implements ModelRepository, CorrespondencePr
             modelInstance = this.modelInstances.get(storageVuri);
         }
         return modelInstance.getResource();
+    }
+
+    private void initializeVaveModel() throws IOException {
+        executeAsCommand(() -> {
+            VURI vaveVURI = this.fileSystemHelper.getVaveVURI();
+            Resource vaveResource = null;
+            if (URIUtil.existsResourceAtUri(vaveVURI.getEMFUri())) {
+                logger.debug("Loading vave model from: " + this.fileSystemHelper.getVaveVURI());
+                vaveResource = this.resourceSet.getResource(vaveVURI.getEMFUri(), true);
+            } else {
+                vaveResource = this.resourceSet.createResource(vaveVURI.getEMFUri());
+                vaveResource.save(null);
+            }
+            this.vaveModel = new VaveModel(vaveResource, VsumConstants.VAVE_SYSTEM);
+            return null;
+        });
+    }
+
+    public VaveModel getVaveModel() {
+        return this.vaveModel;
     }
 
 }
