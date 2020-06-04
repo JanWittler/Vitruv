@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<extendedFeatureModel>
+  <properties/>
+  <struct>
+    <and abstract="true" mandatory="true" name="Root">
+      <and mandatory="true" name="Feature1">
+        <or name="Feature2">
+          <feature name="Feature3"/>
+          <alt name="Feature4">
+            <feature name="Feature5"/>
+            <feature name="Feature6"/>
+          </alt>
+        </or>
+      </and>
+    </and>
+  </struct>
+  <constraints/>
+  <calculations/>
+  <comments/>
+  <featureOrder/>
+</extendedFeatureModel>

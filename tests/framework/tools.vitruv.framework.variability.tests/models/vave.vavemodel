@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vavemodel:System xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:vavemodel="edu.kit.ipd.sdq.vavemodel" name="Root">
+  <variant name="Root"/>
+</vavemodel:System>

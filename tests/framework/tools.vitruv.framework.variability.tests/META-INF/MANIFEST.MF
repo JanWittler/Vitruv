@@ -7,5 +7,8 @@ Automatic-Module-Name: tools.vitruv.framework.variability.tests
 Bundle-RequiredExecutionEnvironment: JavaSE-11
 Require-Bundle: org.junit,
  org.junit.jupiter.api
-Import-Package: tools.vitruv.framework.variability.vave.impl
+Import-Package: org.eclipse.emf.common.util,
+ org.eclipse.emf.ecore.resource,
+ org.eclipse.emf.ecore.resource.impl,
+ tools.vitruv.framework.variability.vave.impl
 Bundle-Vendor: vitruv.tools

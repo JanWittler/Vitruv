@@ -10,6 +10,7 @@ import tools.vitruv.framework.variability.vave.impl.VaveModel;
 
 interface InternalVirtualModel extends VirtualModel {
 	def CorrespondenceModel getCorrespondenceModel();
+	def VaveModel getVaveModel();
 	def void save();
 	def void persistRootElement(VURI persistenceVuri, EObject rootElement);
 	def void executeCommand(Callable<Void> command);
@@ -17,5 +18,4 @@ interface InternalVirtualModel extends VirtualModel {
 	def void setUserInteractor(UserInteractor userInteractor);
 	def void addPropagatedChangeListener(PropagatedChangeListener propagatedChangeListener);
 	def void removePropagatedChangeListener(PropagatedChangeListener propagatedChangeListener);
-    def VaveModel getVaveModel();
 }
