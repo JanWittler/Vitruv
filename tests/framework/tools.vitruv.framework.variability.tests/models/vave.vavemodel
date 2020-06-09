@@ -1,4 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<vavemodel:System xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:vavemodel="edu.kit.ipd.sdq.vavemodel" name="Root">
-  <variant name="Root"/>
+<vavemodel:System xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:vavemodel="edu.kit.ipd.sdq.vavemodel">
+  <variant name="PickAndPlaceUnit">
+    <variationpoint>
+      <variant name="Stack">
+        <variationpoint type="XORNONE">
+          <variant name="InductiveSensor"/>
+        </variationpoint>
+      </variant>
+      <variant name="Ramp"/>
+      <variant name="Crane">
+        <variationpoint type="XORNONE">
+          <variant name="MicroSwitch">
+            <variationpoint>
+              <variant name="RedMicroSwitch"/>
+              <variant name="GreenMicroSwitch"/>
+            </variationpoint>
+          </variant>
+        </variationpoint>
+      </variant>
+      <variant name="WorkPiece">
+        <variationpoint type="OR">
+          <variant name="Plastic"/>
+          <variant name="Metallic"/>
+        </variationpoint>
+      </variant>
+    </variationpoint>
+  </variant>
 </vavemodel:System>

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import tools.vitruv.framework.variability.vave.impl.VaveModel;
 
-public class Export2FeatureIDE {
+public class VaveModelTransformation2FeatureIDE {
 
 	private static final String MODEL_PATH = "models";
 	private static final String VAVE_MODEL = MODEL_PATH + "/" + "vaveTest.vavemodel";

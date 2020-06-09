@@ -14,9 +14,13 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.xml.sax.SAXException;
 
 import tools.vitruv.framework.change.description.ConcreteChange;
 import tools.vitruv.framework.variability.vave.VaveService;
+import tools.vitruv.framework.variability.vave.util.FeatureIDE2Vave;
 import tools.vitruv.framework.variability.vave.util.Vave2FeatureIDE;
 import tools.vitruv.framework.variability.vave.util.VaveModelHelper;
 import tools.vitruv.framework.variability.vave.util.VaveXMIResourceImpl;
@@ -40,6 +44,23 @@ public class VaveModel implements VaveService {
 		vavemodel.System system = VavemodelFactory.eINSTANCE.createSystem();
 		vaveResource.getContents().add(system);
 		system.setName(systemName);
+	}
+	
+	@Override
+	public void setVaveModelfromFeatureIDE(File featureIDEFile) throws ParserConfigurationException, SAXException, IOException, TransformerException {
+		Resource vavemodel = VaveXMIResourceImpl.createAndAddResource();
+		vavemodel.System system = VavemodelFactory.eINSTANCE.createSystem();
+		vavemodel.getContents().add(system);
+
+		// retrieve the featureIDE file
+		DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
+		Document featureidemodel = documentBuilder.parse(featureIDEFile);
+		Node struct = featureidemodel.getElementsByTagName("struct").item(0);
+//		Node calculations = featureidemodel.getElementsByTagName("calculations").item(0);
+		Node rootFeature = ((Element) struct).getElementsByTagName("and").item(0);
+		FeatureIDE2Vave.createFeatureModelInstance(vavemodel, system, featureidemodel, rootFeature, struct);
+		
 	}
 
 	@SuppressWarnings("unchecked")
@@ -129,5 +150,6 @@ public class VaveModel implements VaveService {
 		// TODO Auto-generated method stub
 
 	}
+
 
 }
