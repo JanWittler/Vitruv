@@ -5,15 +5,13 @@ import tools.vitruv.testutils.domains.AllElementTypes2DomainProvider
 import allElementTypes.AllElementTypesPackage
 import allElementTypes2.AllElementTypes2Package
 import org.eclipse.emf.ecore.EcorePackage
-import org.junit.rules.ExpectedException
-import org.junit.Rule
-import org.junit.runner.RunWith
 import org.eclipse.xtext.testing.InjectWith
-import org.eclipse.xtext.testing.XtextRunner
 import tools.vitruv.dsls.reactions.tests.ReactionsLanguageInjectorProvider
 import javax.inject.Inject
+import org.junit.jupiter.api.^extension.ExtendWith
+import org.eclipse.xtext.testing.extensions.InjectionExtension
 
-@RunWith(XtextRunner)
+@ExtendWith(InjectionExtension)
 @InjectWith(ReactionsLanguageInjectorProvider)
 abstract class FluentReactionsBuilderTest {
 	protected static val AllElementTypes = new AllElementTypesDomainProvider().domain
@@ -22,9 +20,6 @@ abstract class FluentReactionsBuilderTest {
 	protected static val NonRoot = AllElementTypesPackage.eINSTANCE.nonRoot
 	protected static val Root2 = AllElementTypes2Package.eINSTANCE.root2
 	protected static val EObject = EcorePackage.eINSTANCE.EObject
-
-	@Rule
-	public val ExpectedException thrown = ExpectedException.none()
 
 	@Inject protected GeneratedReactionsMatcherBuilder matcher
 	@Inject protected FluentReactionsLanguageBuilder create

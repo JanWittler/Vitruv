@@ -1,122 +1,150 @@
 package tools.vitruv.applications.familiespersons.families2Persons.test
 
 import edu.kit.ipd.sdq.metamodels.families.FamiliesFactory
-import org.junit.Test
-import tools.vitruv.framework.correspondence.CorrespondenceModelUtil
-import static org.junit.Assert.*
+import edu.kit.ipd.sdq.metamodels.families.FamilyRegister
 import edu.kit.ipd.sdq.metamodels.persons.Person
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import tools.vitruv.applications.familiespersons.families2persons.FamiliesToPersonsChangePropagationSpecification
+import tools.vitruv.domains.families.FamiliesDomainProvider
+import tools.vitruv.domains.persons.PersonsDomainProvider
+import tools.vitruv.framework.correspondence.CorrespondenceModelUtil
 
-class FamiliesPersonsTest extends AbstractFamiliesToPersonsTest {
-	private static val FAMILY_NAME = "Mustermann";
-	private static val FIRST_NAME_FATHER = "Max";
-	private static val FIRST_NAME_SON = "Sohn";
-	private static val FIRST_NAME_DAUGHTER = "Tochter";
-	private static val FIRST_NAME_MOTHER = "Erika"
-	private static val PERSONS_PATH = "model/persons.persons";
+import static org.hamcrest.CoreMatchers.is
+import static org.hamcrest.MatcherAssert.assertThat
+import static tools.vitruv.testutils.matchers.ModelMatchers.exists
+import tools.vitruv.testutils.VitruvApplicationTest
+import tools.vitruv.testutils.domains.DomainUtil
 
-	@Test
-	public def void testCreateFamilyRegister() {
-		val familyRegister = FamiliesFactory.eINSTANCE.createFamilyRegister
-		saveAndSynchronizeChanges(familyRegister);
-		assertModelExists(PERSONS_PATH);
+class FamiliesPersonsTest extends VitruvApplicationTest {
+	static val FAMILY_NAME = "Mustermann"
+	static val FIRST_NAME_FATHER = "Max"
+	static val FIRST_NAME_SON = "Sohn"
+	static val FIRST_NAME_DAUGHTER = "Tochter"
+	static val FIRST_NAME_MOTHER = "Erika"
+	static val PERSONS_MODEL = DomainUtil.getModelFileName('model/persons', new PersonsDomainProvider)
+	static val FAMILIES_MODEL = DomainUtil.getModelFileName('model/model', new FamiliesDomainProvider)
+
+	override protected getChangePropagationSpecifications() {
+		return #[new FamiliesToPersonsChangePropagationSpecification()]
+	}
+
+	@BeforeEach
+	def createRoot() {
+		resourceAt(FAMILIES_MODEL).propagate[contents += FamiliesFactory.eINSTANCE.createFamilyRegister]
+		assertThat(resourceAt(PERSONS_MODEL), exists)
 	}
 
 	@Test
-	public def void testDeleteFamilyRegister() {
+	def void testDeleteFamilyRegister() {
+		// TODO
+	}
+
+	private def ourFamily() {
+		FamiliesFactory.eINSTANCE.createFamily => [
+			lastName = FAMILY_NAME
+		]
 	}
 
 	@Test
-	public def void testCreateFamilyFather() {
-		val family = FamiliesFactory.eINSTANCE.createFamily();
-		family.lastName = FAMILY_NAME;
-		rootElement.families.add(family);
-		val member = FamiliesFactory.eINSTANCE.createMember();
-		member.firstName = FIRST_NAME_FATHER;
-		member.familyFather = family;
-		family.father = member;
-		saveAndSynchronizeChanges(family);
-		saveAndSynchronizeChanges(member);
-		assertModelExists(PERSONS_PATH);
+	def void testCreateFamilyFather() {
+		FamilyRegister.from(FAMILIES_MODEL).propagate [
+			val family = ourFamily()
+			families += family => [
+				father = FamiliesFactory.eINSTANCE.createMember => [
+					firstName = FIRST_NAME_FATHER
+					familyFather = family
+				]
+			]
+		]
+
+		assertThat(resourceAt(PERSONS_MODEL), exists)
 	}
 
 	@Test
-	public def void testCreateFamilySon() {
-		val family = FamiliesFactory.eINSTANCE.createFamily();
-		family.lastName = FAMILY_NAME;
-		rootElement.families.add(family);
-		val member = FamiliesFactory.eINSTANCE.createMember();
-		member.firstName = FIRST_NAME_SON;
-		member.familySon = family;
-		family.sons.add(member);
-		saveAndSynchronizeChanges(family);
-		saveAndSynchronizeChanges(member);
-		assertModelExists(PERSONS_PATH);
+	def void testCreateFamilySon() {
+		FamilyRegister.from(FAMILIES_MODEL).propagate [
+			val family = ourFamily()
+			families += family => [
+				sons += FamiliesFactory.eINSTANCE.createMember => [
+					firstName = FIRST_NAME_SON
+					familySon = family
+				]
+			]
+		]
+
+		assertThat(resourceAt(PERSONS_MODEL), exists)
 	}
 
 	@Test
-	public def void testCreateFamilyMother() {
-		val family = FamiliesFactory.eINSTANCE.createFamily();
-		family.lastName = FAMILY_NAME;
-		rootElement.families.add(family);
-		val member = FamiliesFactory.eINSTANCE.createMember();
-		member.firstName = FIRST_NAME_MOTHER;
-		member.familyMother = family;
-		family.mother = member;
-		saveAndSynchronizeChanges(family);
-		saveAndSynchronizeChanges(member);
-		assertModelExists(PERSONS_PATH);
+	def void testCreateFamilyMother() {
+		FamilyRegister.from(FAMILIES_MODEL).propagate [
+			val family = ourFamily()
+			families += family => [
+				mother = FamiliesFactory.eINSTANCE.createMember => [
+					firstName = FIRST_NAME_MOTHER
+					familyMother = family
+				]
+			]
+		]
+
+		assertThat(resourceAt(PERSONS_MODEL), exists)
 	}
 
 	@Test
-	public def void testCreateFamilyDaughter() {
-		val family = FamiliesFactory.eINSTANCE.createFamily();
-		family.lastName = FAMILY_NAME;
-		rootElement.families.add(family);
-		val member = FamiliesFactory.eINSTANCE.createMember();
-		member.firstName = FIRST_NAME_DAUGHTER;
-		member.familyDaughter = family;
-		family.daughters.add(member);
-		saveAndSynchronizeChanges(family);
-		saveAndSynchronizeChanges(member);
-		assertModelExists(PERSONS_PATH);
+	def void testCreateFamilyDaughter() {
+		FamilyRegister.from(FAMILIES_MODEL).propagate [
+			val family = ourFamily()
+			families += family => [
+				daughters += FamiliesFactory.eINSTANCE.createMember => [
+					firstName = FIRST_NAME_DAUGHTER
+					familyDaughter = family
+				]
+			]
+		]
+
+		assertThat(resourceAt(PERSONS_MODEL), exists)
 	}
 
 	@Test
-	public def void testDeleteMember() {
-		val family = FamiliesFactory.eINSTANCE.createFamily();
-		family.lastName = FAMILY_NAME;
-		rootElement.families.add(family);
-		val member = FamiliesFactory.eINSTANCE.createMember();
-		member.firstName = FIRST_NAME_DAUGHTER;
-		member.familyDaughter = family;
-		family.daughters.add(member);
-		saveAndSynchronizeChanges(family);
-		saveAndSynchronizeChanges(member);
+	def void testDeleteMember() {
+		FamilyRegister.from(FAMILIES_MODEL).propagate [
+			val family = ourFamily()
+			families += family => [
+				daughters += FamiliesFactory.eINSTANCE.createMember => [
+					firstName = FIRST_NAME_DAUGHTER
+					familyDaughter = family
+				]
+			]
+		]
+		FamilyRegister.from(FAMILIES_MODEL).propagate [
+			families.get(0).daughters.remove(0)
+		]
 
-		family.daughters.remove(member);
-		saveAndSynchronizeChanges(family);
-		assertModelNotExists(PERSONS_PATH)
+		assertThat(resourceAt(PERSONS_MODEL), exists)
 	}
 
 	@Test
-	public def void testChangeFirstName() {
-		val family = FamiliesFactory.eINSTANCE.createFamily();
-		family.lastName = FAMILY_NAME;
-		rootElement.families.add(family);
-		val member = FamiliesFactory.eINSTANCE.createMember();
-		member.firstName = FIRST_NAME_DAUGHTER;
-		member.familyDaughter = family;
-		family.daughters.add(member);
-		saveAndSynchronizeChanges(family);
-		saveAndSynchronizeChanges(member);
-		member.firstName = FIRST_NAME_MOTHER
-		val Iterable<Person> corrObjs = CorrespondenceModelUtil.getCorrespondingEObjects(this.correspondenceModel, member).filter(Person);
-		assertEquals(corrObjs.length, 1)
+	def void testChangeFirstName() {
+		val daughter = FamiliesFactory.eINSTANCE.createMember
+		FamilyRegister.from(FAMILIES_MODEL).propagate [
+			val family = ourFamily()
+			families += family => [
+				daughters += daughter => [
+					firstName = FIRST_NAME_DAUGHTER
+					familyDaughter = family
+				]
+			]
+		]
+
+		daughter.propagate[firstName = FIRST_NAME_MOTHER]
+		val corrObjs = CorrespondenceModelUtil.getCorrespondingEObjects(correspondenceModel, daughter).filter(Person)
+		assertThat(corrObjs.length, is(1))
 		val corrMember = corrObjs.get(0)
-		assertEquals(corrMember.fullName.split(" ").get(0), FIRST_NAME_MOTHER)
+		assertThat(corrMember.fullName.split(" ").get(0), is(FIRST_NAME_MOTHER))
 	}
 
 	@Test
-	public def void testChangeLastName() {
+	def void testChangeLastName() {
 	}
 }

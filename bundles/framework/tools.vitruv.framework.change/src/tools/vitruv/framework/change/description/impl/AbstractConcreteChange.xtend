@@ -19,13 +19,15 @@ import tools.vitruv.framework.uuid.UuidResolver
 import tools.vitruv.framework.change.interaction.UserInteractionBase
 import org.eclipse.emf.ecore.util.EcoreUtil
 import tools.vitruv.framework.change.description.VitruviusChange
+import static com.google.common.base.Preconditions.checkNotNull
 
-abstract class AbstractConcreteChange implements ConcreteChange {
-	private static val logger = Logger.getLogger(AbstractConcreteChange);
-	private var EChange eChange;
-	private List<UserInteractionBase> userInteractions;
+abstract class AbstractConcreteChange extends AbstractVitruviusChangeImpl implements ConcreteChange {
+	static val logger = Logger.getLogger(AbstractConcreteChange);
+	var EChange eChange;
+	List<UserInteractionBase> userInteractions;
 
 	new(EChange eChange) {
+		checkNotNull(eChange)
 		this.eChange = eChange;
 		this.userInteractions = new ArrayList<UserInteractionBase>();
 	}

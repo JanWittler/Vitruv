@@ -1,29 +1,18 @@
 package tools.vitruv.dsls.reactions.tests.simpleChangesTests
 
-import java.util.BitSet
-import static org.junit.Assert.assertTrue;
+import tools.vitruv.dsls.reactions.tests.ExecutionMonitor
+import tools.vitruv.dsls.reactions.tests.simpleChangesTests.SimpleChangesTestsExecutionMonitor.ChangeType
+import java.util.EnumSet
 
-final class SimpleChangesTestsExecutionMonitor {
-	private static var SimpleChangesTestsExecutionMonitor INSTANCE;
-	
-	public static def getInstance() {
-		if (INSTANCE === null) {
-			INSTANCE = new SimpleChangesTestsExecutionMonitor();
-		}
-		return INSTANCE;
+final class SimpleChangesTestsExecutionMonitor implements ExecutionMonitor<ChangeType> {
+	public static val instance = new SimpleChangesTestsExecutionMonitor()
+
+	val values = EnumSet.noneOf(ChangeType)
+
+	private new() {
 	}
-	
-	public static def void reinitialize() {
-		INSTANCE = new SimpleChangesTestsExecutionMonitor();
-	}
-	
-	private BitSet values;
-	
-	new() {
-		this.values = new BitSet(ChangeType.Size.ordinal + 1);
-	}
-	
-	public enum ChangeType {
+
+	enum ChangeType {
 		CreateEObject,
 		DeleteEObject,
 		UpdateSingleValuedPrimitveTypeEAttribute,
@@ -44,31 +33,24 @@ final class SimpleChangesTestsExecutionMonitor {
 		UnsetNonContainmentEReference,
 		Size
 	}
-	
-	public def void set(ChangeType type) {
-		this.values.set(type.ordinal);
+
+	def set(ChangeType type) {
+		values += type
 	}
-	
-	public def boolean isSet(ChangeType type) {
-		return this.values.get(type.ordinal);
+
+	def reset() {
+		values.clear()
 	}
-	
-	public override boolean equals(Object object) {
+
+	override boolean equals(Object object) {
 		if (object instanceof SimpleChangesTestsExecutionMonitor) {
 			val monitor = object;
 			return monitor.values.equals(this.values);
 		}
 		return false;
 	}
-	
-	public def assertEqualWithStatic() {
-		for (var i = 0; i < ChangeType.Size.ordinal; i++) {
-			if (values.get(i)) {
-				assertTrue(ChangeType.values.get(i) + " was expected to occur but did not", INSTANCE.values.get(i));
-			}
-			if (!values.get(i)) {
-				assertTrue(ChangeType.values.get(i) + " was not expected to occur but did", !INSTANCE.values.get(i));
-			}
-		}
+
+	override getObservedExecutions() {
+		values
 	}
 }
