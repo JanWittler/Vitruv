@@ -41,29 +41,29 @@ import vavemodel.Constraint;
 import vavemodel.GroupType;
 import vavemodel.TreeConstraint;
 import vavemodel.Variable;
-import vavemodel.Variant;
+import vavemodel.Feature;
 import vavemodel.VavemodelFactory;
 
 public class FeatureIDE2Vave {
 
 	@SuppressWarnings("unchecked")
-	public static void createFeatureModelInstance(Resource vavemodel, EObject system, Document oldDoc, Node rootFeature,
+	public static void createFeatureModelInstance(Resource vavemodel, EObject system, Document oldDoc, Node rootNodeFeature,
 			Node struct) throws ParserConfigurationException, IOException, TransformerException {
 		// create root feature
-		Variant rootVariant = VavemodelFactory.eINSTANCE.createVariant();
-		String name = rootFeature.getAttributes().getNamedItem(NAME).getNodeValue();
-		rootVariant.setName(name);
-		EStructuralFeature rootVariantFeature = getStructuralFeatureValue(system, NAME, "variant");
+		Feature rootFeature = VavemodelFactory.eINSTANCE.createFeature();
+		String name = rootNodeFeature.getAttributes().getNamedItem(NAME).getNodeValue();
+		rootFeature.setName(name);
+		EStructuralFeature rootVariantFeature = getStructuralFeatureValue(system, NAME, "feature");
 
-		if (rootVariant != null) {
-			((EList<EObject>) system.eGet(rootVariantFeature)).add(rootVariant);
+		if (rootFeature != null) {
+			((EList<EObject>) system.eGet(rootVariantFeature)).add(rootFeature);
 		}
-		iterateFeatureModel(vavemodel, rootVariant, rootFeature);
+		iterateFeatureModel(vavemodel, rootFeature, rootNodeFeature);
 
 		// iterate and process the feature model constraints
 		if (oldDoc.getElementsByTagName(CONSTRAINTS) != null) {
 			Node constraints = oldDoc.getElementsByTagName(CONSTRAINTS).item(0);
-			createFeatureModelConstraints(vavemodel, system, rootVariant, constraints);
+			createFeatureModelConstraints(vavemodel, system, rootFeature, constraints);
 		}
 	}
 
@@ -82,7 +82,7 @@ public class FeatureIDE2Vave {
 				continue;
 			}
 			((EList<EObject>) element.eGet(variationPointFeature)).add(treeconstraint); // add variationpoint to rootvariant
-			Variant variant = VavemodelFactory.eINSTANCE.createVariant();
+			Feature variant = VavemodelFactory.eINSTANCE.createFeature();
 
 			if (childElementIn.getParentNode().getNodeName() == AND) { // variation point has mandatory variant
 				Node attr = childElementIn.getAttributes().getNamedItem(MANDATORY);

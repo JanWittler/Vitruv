@@ -24,7 +24,7 @@ import tools.vitruv.framework.variability.vave.util.FeatureIDE2Vave;
 import tools.vitruv.framework.variability.vave.util.Vave2FeatureIDE;
 import tools.vitruv.framework.variability.vave.util.VaveModelHelper;
 import tools.vitruv.framework.variability.vave.util.VaveXMIResourceImpl;
-import vavemodel.Variant;
+import vavemodel.Feature;
 import vavemodel.VavemodelFactory;
 
 public class VaveModel implements VaveService {
@@ -69,11 +69,11 @@ public class VaveModel implements VaveService {
 		vavemodel.System system = VavemodelFactory.eINSTANCE.createSystem();
 		vaveRes.getContents().add(system);
 		system.setName(featureName);
-		Variant rootVariant = VavemodelFactory.eINSTANCE.createVariant();
-		rootVariant.setName(featureName);
+		Feature rootFeature = VavemodelFactory.eINSTANCE.createFeature();
+		rootFeature.setName(featureName);
 		EStructuralFeature rootVariantFeature = VaveModelHelper.getStructuralFeatureValue(system, "name", "variant");
-		if (rootVariant != null) {
-			((EList<EObject>)system.eGet(rootVariantFeature)).add(rootVariant);
+		if (rootFeature != null) {
+			((EList<EObject>)system.eGet(rootVariantFeature)).add(rootFeature);
 		}
 		VaveXMIResourceImpl.saveResource(vaveRes);
 	}
@@ -86,11 +86,11 @@ public class VaveModel implements VaveService {
 		} catch (IOException e) {
 		}
 		EObject childElementIn = VaveModelHelper.findFeature(vaveResource, systemName);
-		Variant rootVariant = VavemodelFactory.eINSTANCE.createVariant();
-		rootVariant.setName(featureName);
+		Feature rootFeature = VavemodelFactory.eINSTANCE.createFeature();
+		rootFeature.setName(featureName);
 		EStructuralFeature rootVariantFeature = VaveModelHelper.getStructuralFeatureValue(childElementIn, "name", "variant");
-		if (rootVariant != null) {
-			((EList<EObject>)childElementIn.eGet(rootVariantFeature)).add(rootVariant);
+		if (rootFeature != null) {
+			((EList<EObject>)childElementIn.eGet(rootVariantFeature)).add(rootFeature);
 		}
 		VaveXMIResourceImpl.saveResource(vaveResource);
 	}
