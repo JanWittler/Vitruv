@@ -302,7 +302,7 @@ final class NotificationToEChangeConverter {
 
 	private def Iterable<? extends EChange> surroundWithCreateAndFeatureChangesIfNecessary(
 		EObjectAddedEChange<?> change) {
-		return if (eChangeIdManager.isCreateChange(change)) {
+		return if (eChangeIdManager.isCreateChange(change) && !change.newValue.eIsProxy) {
 			val createChange = createCreateEObjectChange(change.newValue)
 			List.of(createChange, change) + allAdditiveChangesForChangeRelevantFeatures(change.newValue)
 		} else
