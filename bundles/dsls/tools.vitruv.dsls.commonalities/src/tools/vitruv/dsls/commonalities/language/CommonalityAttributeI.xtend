@@ -6,22 +6,21 @@ import tools.vitruv.dsls.commonalities.language.impl.CommonalityAttributeImpl
 
 import static tools.vitruv.framework.util.XtendAssertHelper.*
 
-import static extension edu.kit.ipd.sdq.commons.util.java.lang.IterableUtil.*
 import static extension tools.vitruv.dsls.commonalities.language.extensions.CommonalitiesLanguageModelExtensions.*
 
 package class CommonalityAttributeI extends CommonalityAttributeImpl {
 
 	override basicGetClassLikeContainer() {
-		containingCommonalityFile.commonality
+		getOptionalDirectEContainer(Commonality)
 	}
 
 	override isMultiValued() {
 		// TODO Validation: All mappings need to be either multi- or single-valued.
-		getMappings().containsAny[it.isMultiValuedRead]
+		getMappings().exists [isMultiValuedRead]
 	}
 
 	override getType() {
-		if (getMappings().size === 0) return WellKnownClassifiers.JAVA_OBJECT;
+		if (getMappings().isEmpty) return WellKnownClassifiers.JAVA_OBJECT;
 
 		// The most specific type required by the mappings:
 		var Classifier requiredType = WellKnownClassifiers.LEAST_SPECIFIC_TYPE

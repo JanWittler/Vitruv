@@ -27,7 +27,6 @@ import static extension tools.vitruv.dsls.commonalities.language.extensions.Comm
 class InsertResourceBridgeRoutineBuilder extends ReactionsGenerationHelper {
 
 	static class Provider extends ReactionsSegmentScopedProvider<InsertResourceBridgeRoutineBuilder> {
-
 		protected override createFor(FluentReactionsSegmentBuilder segment) {
 			return new InsertResourceBridgeRoutineBuilder(segment).injectMembers
 		}
@@ -55,7 +54,7 @@ class InsertResourceBridgeRoutineBuilder extends ReactionsGenerationHelper {
 	def getInsertResourceBridgeRoutine(ParticipationClass resourceClass) {
 		checkNotNull(resourceClass, "resourceClass is null")
 		checkArgument(resourceClass.isForResource, "The given resourceClass does to refer to the Resource metaclass")
-		val concept = resourceClass.containingCommonality.concept
+		val concept = resourceClass.declaringCommonality.concept
 		return insertResourceBridgeRoutines.computeIfAbsent(concept.name) [
 			create.routine('''insertResourceBridge_«concept.name»''')
 				.input [

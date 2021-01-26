@@ -20,6 +20,7 @@ import static extension tools.vitruv.dsls.commonalities.generator.reactions.util
 import static extension tools.vitruv.dsls.commonalities.generator.reactions.util.ReactionsHelper.*
 import static extension tools.vitruv.dsls.commonalities.generator.reactions.util.XbaseHelper.*
 import static extension tools.vitruv.dsls.commonalities.language.extensions.CommonalitiesLanguageModelExtensions.*
+import org.eclipse.xtext.common.types.TypesFactory
 
 class ReferenceMappingOperatorHelper extends ReactionsGenerationHelper {
 
@@ -65,7 +66,7 @@ class ReferenceMappingOperatorHelper extends ReactionsGenerationHelper {
 	def constructOperator(OperatorReferenceMapping mapping, ReferenceMappingOperatorContext operatorContext) {
 		val extension typeProvider = operatorContext.typeProvider
 		return XbaseFactory.eINSTANCE.createXConstructorCall => [
-			val operatorType = mapping.operator.jvmType.imported
+			val operatorType = mapping.operator.imported
 			// Assert: There is only one constructor and it matches the passed operands.
 			// TODO Ensure this via validation.
 			constructor = operatorType.findConstructor()
@@ -128,16 +129,15 @@ class ReferenceMappingOperatorHelper extends ReactionsGenerationHelper {
 		val extension typeProvider = operatorContext.typeProvider
 		val attributeReferenceHelperType = typeProvider.findDeclaredType(AttributeReferenceHelper).imported
 		val method = attributeReferenceHelperType.findMethod('getPotentiallyContainedIntermediates')
-		val intermediateJvmType = typeProvider.findTypeByName(intermediateType.javaClassName)
 		return attributeReferenceHelperType.memberFeatureCall(method) => [
 			staticWithDeclaringType = true
-			typeArguments += jvmTypeReferenceBuilder.typeRef(intermediateJvmType)
+			typeArguments += jvmTypeReferenceBuilder.typeRef(intermediateType.javaClassName)
 			memberCallArguments += expressions(
 				mapping.constructOperator(operatorContext),
 				containerObject,
 				correspondenceModel,
 				XbaseFactory.eINSTANCE.createXTypeLiteral => [
-					type = intermediateJvmType
+					type = intermediateType.javaClassName.jvmTypeForQualifiedName
 				]
 			)
 		]
@@ -148,18 +148,28 @@ class ReferenceMappingOperatorHelper extends ReactionsGenerationHelper {
 		val extension typeProvider = operatorContext.typeProvider
 		val attributeReferenceHelperType = typeProvider.findDeclaredType(AttributeReferenceHelper).imported
 		val method = attributeReferenceHelperType.findMethod('getPotentialContainerIntermediate')
-		val intermediateJvmType = typeProvider.findTypeByName(intermediateType.javaClassName)
 		return attributeReferenceHelperType.memberFeatureCall(method) => [
 			staticWithDeclaringType = true
-			typeArguments += jvmTypeReferenceBuilder.typeRef(intermediateJvmType)
+			val typeRef = jvmTypeReferenceBuilder.typeRef(intermediateType.javaClassName)
+			typeArguments += typeRef
 			memberCallArguments += expressions(
 				mapping.constructOperator(operatorContext),
 				containedObject,
 				correspondenceModel,
 				XbaseFactory.eINSTANCE.createXTypeLiteral => [
-					type = intermediateJvmType
+					type = intermediateType.javaClassName.jvmTypeForQualifiedName
 				]
 			)
 		]
 	}
+
+	private def getJvmTypeForQualifiedName(String name) {
+		TypesFactory.eINSTANCE.createJvmGenericType => [
+			val simpleNameSeparatorIndex = name.lastIndexOf('.')
+			if (simpleNameSeparatorIndex != -1)
+				packageName = name.substring(0, simpleNameSeparatorIndex)
+			simpleName = name.substring(simpleNameSeparatorIndex + 1)
+		]
+	}
+
 }

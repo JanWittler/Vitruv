@@ -4,15 +4,14 @@ import edu.kit.ipd.sdq.activextendannotations.StaticDelegate
 import edu.kit.ipd.sdq.activextendannotations.Utility
 
 @StaticDelegate(#[
-	AttributeMappingOperatorExtension,
+	AttributeMappingExtension,
 	AttributeMappingOperandExtension,
 	CommonalityExtension,
-	CommonalityFileExtension,
 	CommonalitiesLanguageElementExtension,
+	CommonalityAttributeExtension,
 	CommonalityAttributeMappingExtension,
 	CommonalityReferenceExtension,
 	CommonalityReferenceMappingExtension,
-	OperatorImportExtension,
 	OperandExtension,
 	OperatorAttributeMappingExtension,
 	OperatorReferenceMappingExtension,
@@ -20,13 +19,10 @@ import edu.kit.ipd.sdq.activextendannotations.Utility
 	ParticipationPartExtension,
 	ParticipationClassExtension,
 	ParticipationRelationExtension,
-	ParticipationRelationOperatorExtension,
-	ParticipationAttributeExtension,
 	ParticipationConditionExtension,
-	ParticipationConditionOperatorExtension,
 	ParticipationConditionOperandExtension,
 	ReferenceMappingOperandExtension,
-	ReferenceMappingOperatorExtension
+	ReferenceMappingExtension
 ])
 @Utility
 class CommonalitiesLanguageModelExtensions {

@@ -18,9 +18,7 @@ import static extension tools.vitruv.dsls.commonalities.generator.reactions.Reac
 import static extension tools.vitruv.dsls.commonalities.language.extensions.CommonalitiesLanguageModelExtensions.*
 
 class ApplyCommonalityAttributesRoutineBuilder extends ReactionsGenerationHelper {
-
 	static class Provider extends ReactionsSegmentScopedProvider<ApplyCommonalityAttributesRoutineBuilder> {
-
 		protected override createFor(FluentReactionsSegmentBuilder segment) {
 			return new ApplyCommonalityAttributesRoutineBuilder(segment).injectMembers
 		}
@@ -49,13 +47,13 @@ class ApplyCommonalityAttributesRoutineBuilder extends ReactionsGenerationHelper
 
 	def getApplyAttributesRoutine(Participation participation) {
 		return routines.computeIfAbsent(participation) [
-			val commonality = participation.containingCommonality
+			val commonality = participation.declaringCommonality
 			create.routine('''applyCommonalityAttributes_«participation.reactionName»''')
 				.input [
 					model(commonality.changeClass, INTERMEDIATE)
 				]
 				.match [
-					participation.classes.forEach [ participationClass |
+					participation.allClasses.forEach [ participationClass |
 						retrieveAssertedParticipationObject(participationClass) [
 							variable(INTERMEDIATE) // correspondence source
 						]
