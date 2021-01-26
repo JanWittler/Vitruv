@@ -15,6 +15,7 @@ interface VitruvDomain extends URIHaving, Comparable<URIHaving> {
 	 * resolution of state diff based changes. 
 	 */
 	def StateBasedChangeResolutionStrategy getStateBasedChangeResolutionStrategy();
+	def void setStateBasedChangeResolutionStrategy(StateBasedChangeResolutionStrategy strategy)
 
 	def EPackage getMetamodelRootPackage();
 

@@ -54,6 +54,10 @@ abstract class AbstractVitruvDomain extends AbstractURIHaving implements VitruvD
 	override StateBasedChangeResolutionStrategy getStateBasedChangeResolutionStrategy() {
 		return this.stateBasedChangeResolutionStrategy
 	}
+	
+	override setStateBasedChangeResolutionStrategy(StateBasedChangeResolutionStrategy strategy) {
+		this.stateBasedChangeResolutionStrategy = strategy
+	}
 
 	protected def void initialize(String name, EPackage metamodelRootPackage, Set<EPackage> furtherRootPackages, Map<Object, Object> defaultLoadOptions, Map<Object, Object> defaultSaveOptions, String... fileExtensions) {
 		this.name = name;
