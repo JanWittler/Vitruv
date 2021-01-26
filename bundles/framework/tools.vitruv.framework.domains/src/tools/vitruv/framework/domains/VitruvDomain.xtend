@@ -11,10 +11,10 @@ interface VitruvDomain extends URIHaving, Comparable<URIHaving> {
 	def String getName();
 
 	/**
-	 * Returns the state change propagation strategy responsible for the
-	 * propagation of state diff based changes. 
+	 * Returns the state based change resolution strategy responsible for the
+	 * resolution of state diff based changes. 
 	 */
-	def StateBasedChangeResolutionStrategy getStateChangePropagationStrategy();
+	def StateBasedChangeResolutionStrategy getStateBasedChangeResolutionStrategy();
 
 	def EPackage getMetamodelRootPackage();
 

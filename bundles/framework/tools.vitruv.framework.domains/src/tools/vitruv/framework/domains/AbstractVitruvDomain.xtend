@@ -20,7 +20,7 @@ abstract class AbstractVitruvDomain extends AbstractURIHaving implements VitruvD
 	Map<Object, Object> defaultLoadOptions
 	Map<Object, Object> defaultSaveOptions
 	String name;
-	DefaultStateBasedChangeResolutionStrategy stateChangePropagationStrategy
+	StateBasedChangeResolutionStrategy stateBasedChangeResolutionStrategy
 	
 	/**
 	 * Returns the namespace URI of the given {@link EPackage} and all subpackages.
@@ -51,8 +51,8 @@ abstract class AbstractVitruvDomain extends AbstractURIHaving implements VitruvD
 		initialize(name, metamodelRootPackage, furtherRootPackages, Collections::emptyMap(), Collections::emptyMap(), fileExtensions)
 	}
 	
-	override StateBasedChangeResolutionStrategy getStateChangePropagationStrategy() {
-		return stateChangePropagationStrategy
+	override StateBasedChangeResolutionStrategy getStateBasedChangeResolutionStrategy() {
+		return this.stateBasedChangeResolutionStrategy
 	}
 
 	protected def void initialize(String name, EPackage metamodelRootPackage, Set<EPackage> furtherRootPackages, Map<Object, Object> defaultLoadOptions, Map<Object, Object> defaultSaveOptions, String... fileExtensions) {
@@ -63,7 +63,7 @@ abstract class AbstractVitruvDomain extends AbstractURIHaving implements VitruvD
 		this.nsURIs = (metamodelRootPackage.nsURIsRecursive + furtherRootPackages.map[nsURIsRecursive].flatten).toSet
 		this.defaultLoadOptions = defaultLoadOptions
 		this.defaultSaveOptions = defaultSaveOptions
-		stateChangePropagationStrategy = new DefaultStateBasedChangeResolutionStrategy()
+		stateBasedChangeResolutionStrategy = new DefaultStateBasedChangeResolutionStrategy()
 	}
 
 	override Collection<String> getFileExtensions() {
