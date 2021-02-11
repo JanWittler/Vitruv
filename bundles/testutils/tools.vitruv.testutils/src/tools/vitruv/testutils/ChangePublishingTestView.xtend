@@ -6,9 +6,6 @@ import java.nio.file.Path
 import org.eclipse.emf.ecore.resource.ResourceSet
 import tools.vitruv.framework.uuid.UuidGeneratorAndResolverImpl
 import tools.vitruv.framework.change.recording.AtomicEmfChangeRecorder
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl
-import tools.vitruv.framework.userinteraction.PredefinedInteractionResultProvider
-import static extension tools.vitruv.framework.util.ResourceSetUtil.withGlobalFactories
 import tools.vitruv.framework.uuid.UuidGeneratorAndResolver
 import static com.google.common.base.Preconditions.checkState
 import static com.google.common.base.Preconditions.checkArgument
@@ -19,6 +16,13 @@ import tools.vitruv.framework.change.description.PropagatedChange
 import tools.vitruv.framework.change.description.VitruviusChangeFactory
 import tools.vitruv.framework.vsum.VirtualModel
 import org.eclipse.xtend.lib.annotations.Delegate
+import tools.vitruv.framework.domains.repository.VitruvDomainRepository
+import tools.vitruv.framework.change.description.TransactionalChange
+import java.util.ArrayList
+import static extension edu.kit.ipd.sdq.commons.util.java.lang.IterableUtil.*
+import static extension tools.vitruv.framework.util.ResourceSetUtil.withGlobalFactories
+import static extension tools.vitruv.framework.domains.repository.DomainAwareResourceSet.awareOfDomains
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl
 
 /**
  * A test view that will record and publish the changes created in it.
@@ -32,44 +36,52 @@ class ChangePublishingTestView implements NonTransactionalTestView {
 	var renewResourceCacheAfterPropagation = true
 
 	/**
-	 * Creates a test view that will store its persisted resources in the provided {@code persistenceDirectory},
-	 * allow to program interactions for the provided {@code interactionProvider} and use the provided {@code uriMode}.
-	 */
-	new(Path persistenceDirectory, PredefinedInteractionResultProvider interactionProvider, UriMode uriMode) {
-		this(persistenceDirectory, interactionProvider, uriMode, null as UuidGeneratorAndResolver)
-	}
-
-	/**
-	 * Creates a test view that will store its persisted resources in the provided {@code persistenceDirectory},
-	 * allow to program interactions for the provided {@code interactionProvider}, use the provided {@code uriMode} and
-	 * use the provided {@code parentResolver} as parent resolver for UUID resolving.
+	 * Creates a test view for the provided {@code targetDomains} that will store its persisted resources in the provided
+	 * {@code persistenceDirectory}, allow to program interactions through the provided {@code userInteraction} and use
+	 * the provided {@code uriMode}.
 	 */
 	new(
 		Path persistenceDirectory,
-		PredefinedInteractionResultProvider interactionProvider,
+		TestUserInteraction userInteraction,
 		UriMode uriMode,
-		UuidGeneratorAndResolver parentResolver
+		VitruvDomainRepository targetDomains
 	) {
-		resourceSet = new ResourceSetImpl().withGlobalFactories()
-		delegate = new BasicTestView(resourceSet, persistenceDirectory, interactionProvider, uriMode)
+		this(persistenceDirectory, userInteraction, uriMode, null as UuidGeneratorAndResolver, targetDomains)
+	}
+
+	/**
+	 * Creates a test view for the provided {@code targetDomains} that will store its persisted resources in the 
+	 * provided {@code persistenceDirectory}, allow to program interactions through the provided {@code userInteraction},
+	 * use the provided {@code uriMode} and use the provided {@code parentResolver} as parent resolver for UUID resolving.
+	 */
+	new(
+		Path persistenceDirectory,
+		TestUserInteraction userInteraction,
+		UriMode uriMode,
+		UuidGeneratorAndResolver parentResolver,
+		VitruvDomainRepository targetDomains
+	) {
+		this.resourceSet = new ResourceSetImpl().withGlobalFactories().awareOfDomains(targetDomains)
+		this.delegate = new BasicTestView(persistenceDirectory, resourceSet, userInteraction, uriMode)
 		val uuidResolver = new UuidGeneratorAndResolverImpl(parentResolver, resourceSet, true)
-		changeRecorder = new AtomicEmfChangeRecorder(uuidResolver)
+		this.changeRecorder = new AtomicEmfChangeRecorder(uuidResolver)
 		changeRecorder.beginRecording()
 	}
 
 	/**
-	 * Creates a test view that will store its persisted resources in the provided {@code persistenceDirectory},
-	 * allow to program interactions for the provided {@code interactionProvider}, use the provided {@code uriMode} and
-	 * be connected to the provided {@code virtualModel}.
+	 * Creates a test view for the provided {@code targetDomains} that will store its persisted resources in the
+	 * provided {@code persistenceDirectory}, allow to program interactions through the provided {@code userInteraction},
+	 * use the provided {@code uriMode} and be connected to the provided {@code virtualModel}.
 	 */
 	new(
 		Path persistenceDirectory,
-		PredefinedInteractionResultProvider interactionProvider,
+		TestUserInteraction userInteraction,
 		UriMode uriMode,
-		VirtualModel virtualModel
+		VirtualModel virtualModel,
+		VitruvDomainRepository targetDomains
 	) {
-		this(persistenceDirectory, interactionProvider, uriMode, virtualModel.uuidGeneratorAndResolver)
-		registerChangeProcessor[change|virtualModel.propagateChange(change)]
+		this(persistenceDirectory, userInteraction, uriMode, virtualModel.uuidGeneratorAndResolver, targetDomains)
+		registerChangeProcessor [change|virtualModel.propagateChange(change)]
 	}
 
 	override close() {
@@ -79,45 +91,50 @@ class ChangePublishingTestView implements NonTransactionalTestView {
 
 	override <T extends Notifier> T record(T notifier, Consumer<T> consumer) {
 		try {
-			notifier.startRecordingChanges
-			consumer.accept(notifier)
+			startRecordingChanges(notifier)
+			return delegate.record(notifier, consumer)
 		} finally {
-			notifier.stopRecordingChanges
+			stopRecordingChanges(notifier)
 		}
-		return notifier
 	}
 
 	override <T extends Notifier> List<PropagatedChange> propagate(T notifier, Consumer<T> consumer) {
-		notifier.record(consumer)
-		propagate
+		val delegateChanges = delegate.propagate(notifier) [record(consumer)]
+		changeRecorder.endRecording()
+		val ourChanges = propagateChanges(changeRecorder.changes)
+		changeRecorder.beginRecording()
+		return delegateChanges + ourChanges
 	}
 
 	override propagate() {
 		changeRecorder.endRecording()
-		val compositeChange = VitruviusChangeFactory.instance.createCompositeChange(changeRecorder.changes)
-		compositeChange.saveOrDeleteResource
+		val recordedChanges = changeRecorder.changes
+		val delegateChanges = recordedChanges.map [changedResource]
+			.filterNull.toSet
+			.flatMapFixed [changedResource | 
+				// Propagating an empty modification for every changed resource gives the delegate a 
+				// chance to participate in change propagation (e.g. BasicTestView saves or cleans up resources).
+				// This is not a meaningful operation at all, but rather a hack to bridge between this 
+				// non-transactional operation and the transactional delegate.
+				delegate.propagate(changedResource) []
+			] 
+		val ourChanges = propagateChanges(recordedChanges)
+		changeRecorder.beginRecording()
+		return delegateChanges + ourChanges
+	}
+	
+	def private propagateChanges(Iterable<TransactionalChange> changes) {
+		val compositeChange = VitruviusChangeFactory.instance.createCompositeChange(changes)
 		checkState(compositeChange.validate, "The recorded change set is not valid!")
-		val propagationResult = changeProcessors.flatMap[apply(compositeChange)].toList
+		val propagationResult = changeProcessors.flatMapFixed [apply(compositeChange)]
 		if (renewResourceCacheAfterPropagation) {
 			renewResourceCache()
 		}
-		changeRecorder.beginRecording()
 		return propagationResult
 	}
 
 	override renewResourceCache() {
 		resourceSet.resources.clear()
-	}
-
-	private def void saveOrDeleteResource(VitruviusChange change) {
-		val changedResource = change.changedResource
-		if (changedResource !== null) {
-			if (changedResource.contents.empty) {
-				changedResource.delete(emptyMap())
-			} else {
-				changedResource.save(emptyMap())
-			}
-		}
 	}
 
 	/**
@@ -143,5 +160,16 @@ class ChangePublishingTestView implements NonTransactionalTestView {
 
 	def setRenewResourceCacheAfterPropagation(boolean enabled) {
 		renewResourceCacheAfterPropagation = enabled
+	}
+	
+	def static <T> List<T> operator_plus(List<T> a, List<T> b) {
+		return if (a.isEmpty) b
+		else if (b.isEmpty) a
+		else {
+			val result = new ArrayList(a.size + b.size)
+			result.addAll(a)
+			result.addAll(b)
+			result
+		}
 	}
 }

@@ -1,10 +1,7 @@
 package tools.vitruv.testutils
 
-import org.eclipse.emf.ecore.resource.ResourceSet
 import java.nio.file.Path
 import org.eclipse.xtend.lib.annotations.Accessors
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl
-import tools.vitruv.framework.userinteraction.PredefinedInteractionResultProvider
 import org.eclipse.emf.common.util.URI
 import org.eclipse.emf.common.notify.Notifier
 import java.util.function.Consumer
@@ -14,60 +11,76 @@ import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.emf.ecore.EObject
 import static com.google.common.base.Preconditions.checkArgument
 import tools.vitruv.framework.util.bridges.EMFBridge
-import static extension tools.vitruv.framework.util.ResourceSetUtil.withGlobalFactories
-import static extension tools.vitruv.framework.util.bridges.EcoreResourceBridge.loadOrCreateResource
-import tools.vitruv.framework.userinteraction.UserInteractionFactory
 import static extension java.nio.file.Files.move
 import static java.nio.file.Files.createDirectories
+import tools.vitruv.framework.domains.repository.VitruvDomainRepository
+import static extension tools.vitruv.framework.util.ResourceSetUtil.withGlobalFactories
+import static extension tools.vitruv.framework.domains.repository.DomainAwareResourceSet.awareOfDomains
+import static extension tools.vitruv.framework.util.bridges.EcoreResourceBridge.loadOrCreateResource
+import org.eclipse.emf.ecore.resource.ResourceSet
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl
 
 /**
  * A minimal test view that gives access to resources, but does not record any changes.
- */
+ */ 
 class BasicTestView implements TestView {
-	val ResourceSet resourceSet
 	val Path persistenceDirectory
+	val ResourceSet resourceSet
 	@Accessors
 	val TestUserInteraction userInteraction
 	val UriMode uriMode
+	
+	/**
+	 * Creates a test view for the provided {@code targetDomains} that will store its persisted resources in the
+	 *  provided {@code persistenceDirectory}, and use the provided {@code uriMode}.
+	 */
+	new(Path persistenceDirectory, UriMode uriMode, VitruvDomainRepository targetDomains) {
+		this(persistenceDirectory, new TestUserInteraction(), uriMode, targetDomains)
+	}
 
 	/**
-	 * Creates a test view that will store its persisted resources in the provided {@code persistenceDirectory},
+	 * Creates a test view for the provided {@code targetDomains} that will store its persisted resources in the
+	 * provided {@code persistenceDirectory}, allow to program interactions through the provided {@code userInteraction},
 	 * and use the provided {@code uriMode}.
 	 */
-	new(Path persistenceDirectory, UriMode uriMode) {
-		this(persistenceDirectory, UserInteractionFactory.instance.createPredefinedInteractionResultProvider(null),
-			uriMode)
+	new(
+		Path persistenceDirectory,
+		TestUserInteraction userInteraction,
+		UriMode uriMode,
+		VitruvDomainRepository targetDomains
+	) {
+		this(
+			persistenceDirectory,
+			new ResourceSetImpl().withGlobalFactories().awareOfDomains(targetDomains),
+			userInteraction,
+			uriMode
+		)
 	}
-
+	
 	/**
-	 * Creates a test view that will store its persisted resources in the provided {@code persistenceDirectory},
-	 * allow to program interactions for the provided {@code interactionProvider}, and use the provided {@code uriMode}.
+	 * Creates a test view that will store its persisted resources in the provided {@code persistenceDirectory}, access
+	 * resources through the provided {@code resourceSet}, allow to program interactions through the provided 
+	 * {@code userInteraction}, and use the provided {@code uriMode}.
 	 */
-	new(Path persistenceDirectory, PredefinedInteractionResultProvider interactionProvider, UriMode uriMode) {
-		this(new ResourceSetImpl().withGlobalFactories(), persistenceDirectory, interactionProvider, uriMode)
-	}
-
-	/**
-	 * Creates a test view that will store its persisted resources in the provided {@code persistenceDirectory}, load
-	 * resources into the provided {@code resourceSet}, allow to program interactions for the provided
-	 *  {@code interactionProvider}, and use the provided {@code uriMode}.
-	 */
-	new(ResourceSet resourceSet, Path persistenceDirectory, PredefinedInteractionResultProvider interactionProvider,
-		UriMode uriMode) {
-		this.resourceSet = resourceSet
+	new(
+		Path persistenceDirectory,
+		ResourceSet resourceSet,
+		TestUserInteraction userInteraction,
+		UriMode uriMode
+	) {
 		this.persistenceDirectory = persistenceDirectory
+		this.resourceSet = resourceSet
+		this.userInteraction = userInteraction
 		this.uriMode = uriMode
-		this.userInteraction = new TestUserInteraction(interactionProvider)
 	}
-
+	
 	override resourceAt(URI modelUri) {
-		synchronized (resourceSet) {
-			resourceSet.loadOrCreateResource(modelUri)
-		}
+		resourceSet.loadOrCreateResource(modelUri)
 	}
 
-	override <T> T from(Class<T> clazz, URI modelUri) {
-		return from(clazz, resourceSet.getResource(modelUri, true))
+	override <T extends EObject> T from(Class<T> clazz, URI modelUri) {
+		val resource = resourceSet.getResource(modelUri, true)
+		return clazz.from(resource)
 	}
 
 	override <T extends Notifier> T record(T notifier, Consumer<T> consumer) {
@@ -77,8 +90,8 @@ class BasicTestView implements TestView {
 
 	override <T extends Notifier> List<PropagatedChange> propagate(T notifier, Consumer<T> consumer) {
 		val toSave = determineResource(notifier)
-		notifier.record(consumer)
-		(toSave ?: determineResource(notifier)).save(emptyMap())
+		consumer.accept(notifier)
+		(toSave ?: determineResource(notifier))?.saveOrDelete()
 		return emptyList()
 	}
 	
@@ -97,6 +110,14 @@ class BasicTestView implements TestView {
 		move(source, target)
 	}
 
+	def private saveOrDelete(Resource resource) {
+		if (resource.contents.isEmpty) {
+			resource.delete(emptyMap)
+		} else {
+			resource.save(emptyMap)
+		}
+	}
+	 
 	override getUri(Path viewRelativePath) {
 		checkArgument(viewRelativePath !== null, "The viewRelativePath must not be null!")
 		checkArgument(!viewRelativePath.isEmpty, "The viewRelativePath must not be empty!")
@@ -130,7 +151,7 @@ class BasicTestView implements TestView {
 	}
 
 	override close() throws Exception {
-		resourceSet.resources.forEach[unload]
-		resourceSet.resources.clear
+		resourceSet.resources.forEach [unload()]
+		resourceSet.resources.clear()
 	}
 }

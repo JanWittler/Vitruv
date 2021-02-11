@@ -27,7 +27,6 @@ import tools.vitruv.testutils.printing.HamcrestDescriptionPrintTarget
 import tools.vitruv.testutils.printing.PrintResult
 import tools.vitruv.testutils.printing.PrintTarget
 
-import static tools.vitruv.testutils.matchers.MatcherUtil.a
 import static tools.vitruv.testutils.printing.PrintMode.*
 import static java.lang.Integer.MAX_VALUE
 
@@ -56,7 +55,7 @@ import tools.vitruv.testutils.matchers.ModelDeepEqualityOption.EqualityFeatureFi
 import tools.vitruv.testutils.matchers.ModelDeepEqualityOption.EqualityStrategy
 import org.eclipse.emf.compare.match.eobject.EqualityHelperExtensionProvider
 import org.eclipse.emf.compare.utils.IEqualityHelper
-import static extension tools.vitruv.testutils.matchers.MatcherUtil.joinSemantic
+import static extension tools.vitruv.testutils.printing.TestMessages.*
 import org.eclipse.emf.compare.match.IMatchEngine
 import org.eclipse.emf.compare.scope.IComparisonScope
 import org.eclipse.xtend.lib.annotations.Accessors
@@ -414,18 +413,43 @@ package class ModelDeepEqualityMatcher<O extends EObject> extends TypeSafeMatche
 			this
 		}
 
-		override PrintResult printFeature(
-			extension PrintTarget target,
+		override PrintResult printFeatureValue(
+			PrintTarget target,
 			PrintIdProvider idProvider,
 			EObject object,
-			EStructuralFeature feature
+			EStructuralFeature feature,
+			Object value
 		) {
+			printIfIgnored(target, object, feature)
+		}
+		
+		override PrintResult printFeatureValueSet(
+			PrintTarget target,
+			PrintIdProvider idProvider,
+			EObject object,
+			EStructuralFeature feature,
+			Collection<?> values
+		) {
+			printIfIgnored(target, object, feature)
+		}
+		
+		override PrintResult printFeatureValueList(
+			PrintTarget target,
+			PrintIdProvider idProvider,
+			EObject object,
+			EStructuralFeature feature,
+			Collection<?> values
+		) {
+			printIfIgnored(target, object, feature)
+		}
+		
+		def private printIfIgnored(extension PrintTarget target, EObject object, EStructuralFeature feature) {
 			if (featureFilters.exists[!includeFeature(object, feature)]) {
-				print(feature.name) + print('=…')
+				print('…')
 			} else {
 				NOT_RESPONSIBLE
 			}
-		}
+		} 
 	}
 
 	private static class ComparisonAwarePrintIdProvider implements PrintIdProvider {
@@ -506,13 +530,13 @@ package class ModelDeepEqualityMatcher<O extends EObject> extends TypeSafeMatche
 
 		def private PrintResult printFeatureDifference(extension PrintTarget target, EStructuralFeature feature,
 			String context, Diff difference, Object value) {
-			print(context) //
-			+ (if (difference.match.left !== null) {
-				print(' (') + idProvider.printWithId(difference.match.left)[_, id|print(id)] + print(')')
-			} else {
-				PRINTED_NO_OUTPUT
-			}) + print('.') + print(feature.name) + print(' ') + print(difference.kind.verb) + print(': ') //
-			+ printValue(value) [subTarget, theValue | printFeatureValue(subTarget, idProvider, feature, theValue)]
+			print(context)
+				+ (if (difference.match.left !== null) {
+					print(' (') + idProvider.printWithId(difference.match.left)[_, id|print(id)] + print(')')
+				} else {
+					PRINTED_NO_OUTPUT
+				}) + print('.') + print(feature.name) + print(' ') + print(difference.kind.verb) + print(': ')
+			+ target.printFeatureValue(idProvider, difference.match.left ?: difference.match.right, feature, value)
 		}
 
 		def private String getVerb(DifferenceKind kind) {

@@ -4,7 +4,6 @@ import allElementTypes.Root
 import java.util.List
 
 import tools.vitruv.framework.change.echange.EChange
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl
 import tools.vitruv.framework.change.recording.AtomicEmfChangeRecorder
 import tools.vitruv.framework.util.bridges.EMFBridge
 import tools.vitruv.framework.uuid.UuidGeneratorAndResolverImpl
@@ -12,7 +11,6 @@ import static extension tools.vitruv.framework.change.echange.resolve.EChangeRes
 import tools.vitruv.framework.uuid.UuidGeneratorAndResolver
 import tools.vitruv.framework.change.echange.resolve.EChangeUnresolver
 import org.eclipse.emf.ecore.resource.ResourceSet
-import static extension tools.vitruv.framework.util.ResourceSetUtil.withGlobalFactories
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.AfterEach
 import static org.junit.jupiter.api.Assertions.assertEquals
@@ -26,6 +24,10 @@ import tools.vitruv.testutils.TestProjectManager
 import tools.vitruv.testutils.TestProject
 import java.nio.file.Path
 import tools.vitruv.testutils.RegisterMetamodelsInStandalone
+import tools.vitruv.testutils.domains.TestDomainsRepository
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl
+import static extension tools.vitruv.framework.util.ResourceSetUtil.withGlobalFactories
+import static extension tools.vitruv.framework.domains.repository.DomainAwareResourceSet.awareOfDomains
 
 @ExtendWith(TestProjectManager, RegisterMetamodelsInStandalone)
 abstract class ChangeDescription2ChangeTransformationTest {
@@ -40,7 +42,7 @@ abstract class ChangeDescription2ChangeTransformationTest {
 	@BeforeEach
 	def void beforeTest(@TestProject Path tempFolder) {
 		this.tempFolder = tempFolder
-		this.resourceSet = new ResourceSetImpl().withGlobalFactories
+		this.resourceSet = new ResourceSetImpl().withGlobalFactories().awareOfDomains(TestDomainsRepository.INSTANCE)
 		this.uuidGeneratorAndResolver = new UuidGeneratorAndResolverImpl(resourceSet, true)
 		this.changeRecorder = new AtomicEmfChangeRecorder(uuidGeneratorAndResolver)
 		this.resourceSet.startRecording

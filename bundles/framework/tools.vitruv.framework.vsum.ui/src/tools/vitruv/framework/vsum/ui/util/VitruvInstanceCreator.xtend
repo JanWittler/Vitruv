@@ -9,11 +9,10 @@ import org.eclipse.core.resources.IProject
 import org.eclipse.core.resources.ResourcesPlugin
 import tools.vitruv.framework.change.processing.ChangePropagationSpecification
 import java.util.Set
-import tools.vitruv.framework.vsum.VirtualModelConfigurationBuilder
-import tools.vitruv.framework.vsum.VirtualModelImpl
 import tools.vitruv.framework.userinteraction.UserInteractionFactory
 import org.apache.log4j.Logger
 import tools.vitruv.framework.domains.ui.builder.VitruvProjectBuilderApplicator
+import tools.vitruv.framework.vsum.VirtualModelBuilder
 
 class VitruvInstanceCreator {
 	static val LOGGER = Logger.getLogger(VitruvInstanceCreator)
@@ -38,14 +37,13 @@ class VitruvInstanceCreator {
 					VitruvProjectBuilderApplicator.getApplicatorsForVitruvDomain(domain).forEach[
 						setPropagateAfterBuild(true).addBuilder(project, virtualModel.folder, domain.fileExtensions.toSet)
 					]
-					return true
 				} catch (IllegalStateException e) {
 					LOGGER.error('''Could not initialize V-SUM project for project: «project.name»''')
 					return false
 				}
 			}
-
 		}
+		return true
 	}
 
 	private def InternalVirtualModel createVirtualModel(String vsumName) {
@@ -53,11 +51,12 @@ class VitruvInstanceCreator {
 		val project = ResourcesPlugin.workspace.root.getProject(vsumName)
 		project.create(null)
 		project.open(null)
-		val configuration = VirtualModelConfigurationBuilder.create().addDomains(domains).
-			addChangePropagationSpecifications(createChangePropagationSpecifications).toConfiguration()
-		val virtualModel = new VirtualModelImpl(project.location.toFile,
-			UserInteractionFactory.instance.createDialogUserInteractor(), configuration)
-		return virtualModel
+		return new VirtualModelBuilder()
+			.withStorageFolder(project.location.toFile)
+			.withUserInteractor(UserInteractionFactory.instance.createDialogUserInteractor())
+			.withDomains(domains)
+			.withChangePropagationSpecifications(createChangePropagationSpecifications())
+			.build()
 	}
 
 	private def Iterable<VitruvDomain> getDomains() {

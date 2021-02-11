@@ -8,11 +8,9 @@ import java.util.Map
 import java.util.concurrent.Callable
 import java.util.function.Consumer
 import org.apache.log4j.Logger
-import org.eclipse.emf.common.util.URI
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.emf.ecore.resource.ResourceSet
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl
 import org.eclipse.xtend.lib.annotations.Accessors
 import tools.vitruv.framework.change.description.TransactionalChange
 import tools.vitruv.framework.change.description.VitruviusChangeFactory
@@ -36,48 +34,48 @@ import tools.vitruv.framework.vsum.helper.FileSystemHelper
 import static java.util.Collections.emptyMap
 import static extension tools.vitruv.framework.util.ResourceSetUtil.getRequiredTransactionalEditingDomain
 import static extension tools.vitruv.framework.util.ResourceSetUtil.getTransactionalEditingDomain
-import static extension tools.vitruv.framework.util.ResourceSetUtil.withGlobalFactories
 import static extension tools.vitruv.framework.util.command.EMFCommandBridge.executeVitruviusRecordingCommandAndFlushHistory
 import tools.vitruv.framework.util.command.VitruviusRecordingCommand
 import static extension tools.vitruv.framework.util.bridges.EcoreResourceBridge.loadOrCreateResource
+import static extension tools.vitruv.framework.util.ResourceSetUtil.withGlobalFactories
+import static extension tools.vitruv.framework.domains.repository.DomainAwareResourceSet.awareOfDomains
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl
 
 class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding {
 	static val logger = Logger.getLogger(ResourceRepositoryImpl.simpleName)
 	val ResourceSet resourceSet
-	val VitruvDomainRepository metamodelRepository
-	val Map<VURI, ModelInstance> modelInstances
-	InternalCorrespondenceModel correspondenceModel
+	val VitruvDomainRepository domainRepository
+	val Map<VURI, ModelInstance> modelInstances = new HashMap()
+	val InternalCorrespondenceModel correspondenceModel
 	val FileSystemHelper fileSystemHelper
 	val File folder
-	@Accessors(PUBLIC_GETTER, PRIVATE_SETTER)
-	UuidGeneratorAndResolver uuidGeneratorAndResolver
-	val Map<VitruvDomain, AtomicEmfChangeRecorder> domainToRecorder
+	@Accessors
+	val UuidGeneratorAndResolver uuidGeneratorAndResolver
+	val Map<VitruvDomain, AtomicEmfChangeRecorder> domainToRecorder = new HashMap()
 	var isRecording = false
 
 	new(File folder, VitruvDomainRepository metamodelRepository) {
 		this(folder, metamodelRepository, null)
 	}
 
-	new(File folder, VitruvDomainRepository metamodelRepository, ClassLoader classLoader) {
-		this.metamodelRepository = metamodelRepository
+	new(File folder, VitruvDomainRepository domainRepository, ClassLoader classLoader) {
+		this.domainRepository = domainRepository
 		this.folder = folder
-		this.resourceSet = new ResourceSetImpl().withGlobalFactories()
-		this.modelInstances = new HashMap<VURI, ModelInstance>()
+		this.resourceSet = new ResourceSetImpl().withGlobalFactories().awareOfDomains(domainRepository)
 		try {
-			this.fileSystemHelper = new FileSystemHelper(this.folder)
+			this.fileSystemHelper = new FileSystemHelper(folder)
 		} catch (IOException e) {
 			val message = '''Unable to initialize V-SUM metadata folders in folder: «folder»'''
 			logger.error(message, e)
 			throw new IllegalStateException(message, e)
 		}
-		initializeUuidProviderAndResolver()
-		this.domainToRecorder = new HashMap<VitruvDomain, AtomicEmfChangeRecorder>()
-		initializeCorrespondenceModel()
+		this.uuidGeneratorAndResolver = initializeUuidProviderAndResolver()
+		this.correspondenceModel = initializeCorrespondenceModel()
 		loadVURIsOfVSMUModelInstances()
 	}
 
 	def private AtomicEmfChangeRecorder getOrCreateChangeRecorder(VURI vuri) {
-		var VitruvDomain domain = getMetamodelByURI(vuri)
+		var VitruvDomain domain = getDomainForURI(vuri)
 		domainToRecorder.putIfAbsent(domain, new AtomicEmfChangeRecorder(this.uuidGeneratorAndResolver))
 		return domainToRecorder.get(domain)
 	}
@@ -93,7 +91,7 @@ class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding
 		val ModelInstance modelInstance = getModelInstanceOriginal(modelURI)
 		try {
 			if (modelURI.EMFUri.toString().startsWith("pathmap") || URIUtil.existsResourceAtUri(modelURI.EMFUri)) {
-				modelInstance.load(getMetamodelByURI(modelURI).defaultLoadOptions, forceLoadByDoingUnloadBeforeLoad)
+				modelInstance.load(forceLoadByDoingUnloadBeforeLoad)
 				relinkUuids(modelInstance)
 			}
 		} catch (RuntimeException re) {
@@ -107,7 +105,7 @@ class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding
 
 	def private void relinkUuids(ModelInstance modelInstance) {
 		for (EObject root : modelInstance.rootElements) {
-			root.eAllContents.forEachRemaining([ object |
+			root.eAllContents.forEachRemaining [ object |
 				if (uuidGeneratorAndResolver.hasUuid(object)) {
 					uuidGeneratorAndResolver.registerEObject(this.uuidGeneratorAndResolver.getUuid(object), object)
 				} else {
@@ -115,7 +113,7 @@ class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding
 					// for Java
 					logger.trace('''Element «object» has no UUID that can be linked during resource reload''')
 				}
-			])
+			]
 		}
 	}
 
@@ -162,17 +160,15 @@ class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding
 
 	def private void saveModelInstance(ModelInstance modelInstance) {
 		executeAsCommand [
-			var metamodel = getMetamodelByURI(modelInstance.URI)
 			var resourceToSave = modelInstance.resource
-			val saveOptions = if(metamodel !== null) metamodel.defaultSaveOptions else emptyMap
 			try {
 				if (!resourceSet.requiredTransactionalEditingDomain.isReadOnly(resourceToSave)) {
 					// we allow resources without a domain for internal uses.
-					EcoreResourceBridge.saveResource(resourceToSave, saveOptions)
+					EcoreResourceBridge.saveResource(resourceToSave, emptyMap)
 				}
 			} catch (IOException e) {
 				logger.warn('''Model could not be saved: «modelInstance.URI»''')
-				throw new RuntimeException('''Could not save VURI «modelInstance.URI»: «e»''')
+				throw new RuntimeException('''Could not save VURI «modelInstance.URI»''', e)
 			}
 			return null
 		]
@@ -206,12 +202,12 @@ class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding
 
 	def private void saveAllChangedModels() {
 		deleteEmptyModels()
-		for (ModelInstance modelInstance : this.modelInstances.values()) {
-			var Resource resourceToSave = modelInstance.resource
+		for (modelInstance : this.modelInstances.values) {
+			val resourceToSave = modelInstance.resource
 			if (resourceToSave.isModified()) {
 				logger.trace('''Saving resource: «resourceToSave»''')
 				saveModelInstance(modelInstance)
-				modelInstance.getResource().setModified(false)
+				resourceToSave.setModified(false)
 			}
 		}
 	}
@@ -224,40 +220,34 @@ class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding
 	}
 
 	def private ModelInstance getOrCreateUnregisteredModelInstance(VURI modelURI) {
-		var String fileExtension = modelURI.fileExtension
-		var VitruvDomain metamodel = this.metamodelRepository.getDomain(fileExtension)
-		if (metamodel === null) {
-			throw new RuntimeException( '''Cannot create a new model instance at the uri '«modelURI»' because no metamodel is registered for the file extension '«fileExtension»'!''')
+		if (getDomainForURI(modelURI) === null) {
+			throw new RuntimeException( '''Cannot create a new model instance at the uri '«modelURI»' because no domain is registered for the URI «modelURI»!''')
 		}
-		return loadModelInstance(modelURI, metamodel)
-	}
-
-	def private ModelInstance loadModelInstance(VURI modelURI, VitruvDomain metamodel) {
-		var URI emfURI = modelURI.EMFUri
-		var Resource modelResource = URIUtil.loadResourceAtURI(emfURI, this.resourceSet, metamodel.defaultLoadOptions)
-		var ModelInstance modelInstance = new ModelInstance(modelURI, modelResource)
+		val modelResource = URIUtil.loadResourceAtURI(modelURI.EMFUri, this.resourceSet)
+		val modelInstance = new ModelInstance(modelURI, modelResource)
 		relinkUuids(modelInstance)
 		return modelInstance
 	}
 
-	def private void initializeCorrespondenceModel() {
-		executeAsCommand[
+	def private initializeCorrespondenceModel() {
+		executeAsCommand [
 			var correspondencesVURI = fileSystemHelper.correspondencesVURI
 			logger.trace('''Creating or loading correspondence model from: «correspondencesVURI»''')
 			val correspondencesResource = resourceSet.loadOrCreateResource(correspondencesVURI.EMFUri)
-			correspondencesResource.save(null);
+			correspondencesResource.save(null)
 			var recorder = getOrCreateChangeRecorder(correspondencesVURI)
 			recorder.addToRecording(correspondencesResource)
 			recorder.beginRecording()
-			correspondenceModel = CorrespondenceModelFactory.instance.createCorrespondenceModel(
-				new TuidResolverImpl(metamodelRepository, this), uuidGeneratorAndResolver, this, metamodelRepository,
+			val correspondenceModel = CorrespondenceModelFactory.instance.createCorrespondenceModel(
+				new TuidResolverImpl(domainRepository, this), uuidGeneratorAndResolver, this, domainRepository,
 				correspondencesVURI, correspondencesResource)
 			recorder.endRecording()
 			recorder.addToRecording(correspondencesResource)
+			correspondenceModel
 		]
 	}
 
-	def private void initializeUuidProviderAndResolver() {
+	def private initializeUuidProviderAndResolver() {
 		executeAsCommand [
 			var uuidProviderVURI = fileSystemHelper.uuidProviderAndResolverVURI
 			logger.trace('''Creating or loading uuid provider and resolver model from: «uuidProviderVURI»''')
@@ -266,7 +256,7 @@ class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding
 			// create changes in any case. We should therefore use one monitor per model and turn on
 			// strict mode
 			// depending on the kind of model/view (textual vs. semantic)
-			uuidGeneratorAndResolver = new UuidGeneratorAndResolverImpl(this.resourceSet, uuidProviderResource, false)
+			new UuidGeneratorAndResolverImpl(this.resourceSet, uuidProviderResource, false)
 		]
 	}
 
@@ -280,8 +270,7 @@ class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding
 
 	def private void loadVURIsOfVSMUModelInstances() {
 		for (VURI vuri : fileSystemHelper.loadVsumVURIsFromFile()) {
-			var metamodel = getMetamodelByURI(vuri)
-			var modelInstance = loadModelInstance(vuri, metamodel)
+			var modelInstance = getOrCreateUnregisteredModelInstance(vuri)
 			registerModelInstance(vuri, modelInstance)
 		}
 	}
@@ -291,8 +280,8 @@ class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding
 		// fileSystemHelper.saveVsumVURIsToFile(modelInstances.keySet)
 	}
 
-	def private VitruvDomain getMetamodelByURI(VURI uri) {
-		metamodelRepository.getDomain(uri.fileExtension)
+	def private VitruvDomain getDomainForURI(VURI uri) {
+		domainRepository.getDomain(uri.fileExtension)
 	}
 
 	override void startRecording() {
@@ -348,13 +337,11 @@ class ResourceRepositoryImpl implements ModelRepository, CorrespondenceProviding
 	override Resource getModelResource(VURI vuri) {
 		getModelInstanceOriginal(vuri).resource
 	}
-	
+
 	def dispose() {
 		resourceSet.transactionalEditingDomain?.dispose
-		resourceSet.resources.forEach[
-			allContents.forEach[eAdapters.clear]
-			unload
-		]
+		resourceSet.resources.forEach[unload]
 		resourceSet.resources.clear
 	}
+
 }

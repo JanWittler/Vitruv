@@ -8,16 +8,15 @@ import org.junit.jupiter.api.^extension.ExtendWith
 import tools.vitruv.framework.change.processing.ChangePropagationSpecification
 import tools.vitruv.framework.correspondence.CorrespondenceModel
 import tools.vitruv.framework.tuid.TuidManager
-import tools.vitruv.framework.userinteraction.UserInteractionFactory
 import tools.vitruv.framework.vsum.InternalVirtualModel
-import tools.vitruv.framework.vsum.VirtualModelConfiguration
-import tools.vitruv.framework.vsum.VirtualModelImpl
 import tools.vitruv.testutils.matchers.CorrespondenceModelContainer
 
 import org.eclipse.xtend.lib.annotations.Delegate
 import static tools.vitruv.testutils.UriMode.*
-import tools.vitruv.framework.userinteraction.PredefinedInteractionResultProvider
 import java.util.List
+import tools.vitruv.framework.vsum.VirtualModelBuilder
+import tools.vitruv.framework.domains.repository.VitruvDomainRepository
+import tools.vitruv.framework.domains.repository.VitruvDomainRepositoryImpl
 
 @ExtendWith(TestProjectManager, TestLogging)
 abstract class VitruvApplicationTest implements CorrespondenceModelContainer, TestView {
@@ -40,19 +39,21 @@ abstract class VitruvApplicationTest implements CorrespondenceModelContainer, Te
 		@TestProject(variant="vsum") Path vsumPath) {
 		TuidManager.instance.reinitialize()
 		val changePropagationSpecifications = this.changePropagationSpecifications
-		val domains = changePropagationSpecifications.flatMap[List.of(sourceDomain, targetDomain)].toSet
-		var interactionProvider = UserInteractionFactory.instance.createPredefinedInteractionResultProvider(null)
-		var userInteractor = UserInteractionFactory.instance.createUserInteractor(interactionProvider)
-		virtualModel = new VirtualModelImpl(vsumPath.toFile(), userInteractor, new VirtualModelConfiguration => [
-			domains.forEach[domain|addMetamodel(domain)]
-			changePropagationSpecifications.forEach[spec|addChangePropagationSpecification(spec)]
-		])
-		testView = generateTestView(testProjectPath, interactionProvider);
+		val userInteraction = new TestUserInteraction
+		val targetDomains = new VitruvDomainRepositoryImpl(
+			changePropagationSpecifications.flatMap [List.of(sourceDomain, targetDomain)].toSet
+		)
+		virtualModel = new VirtualModelBuilder()
+			.withStorageFolder(vsumPath)
+			.withUserInteractorForResultProvider(new TestUserInteraction.ResultProvider(userInteraction))
+			.withDomainRepository(targetDomains)
+			.withChangePropagationSpecifications(changePropagationSpecifications)
+			.build()
+		testView = generateTestView(testProjectPath, userInteraction, targetDomains)
 	}
 
-	def package TestView generateTestView(Path testProjectPath,
-		PredefinedInteractionResultProvider interactionProvider) {
-		new ChangePublishingTestView(testProjectPath, interactionProvider, this.uriMode, virtualModel)
+	def package TestView generateTestView(Path testProjectPath, TestUserInteraction userInteraction, VitruvDomainRepository targetDomains) {
+		new ChangePublishingTestView(testProjectPath, userInteraction, this.uriMode, virtualModel, targetDomains)
 	}
 
 	@AfterEach
@@ -64,5 +65,4 @@ abstract class VitruvApplicationTest implements CorrespondenceModelContainer, Te
 	override CorrespondenceModel getCorrespondenceModel() { virtualModel.correspondenceModel }
 
 	def protected InternalVirtualModel getVirtualModel() { virtualModel }
-
 }
