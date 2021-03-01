@@ -119,7 +119,7 @@ class VirtualModelImpl implements InternalVirtualModel {
 		val vitruvDomain = domainRepository.getDomain(vuri.fileExtension)
 		val currentState = resourceRepository.getModel(vuri).resource
 		if (currentState.isValid(newState)) {
-			val strategy = vitruvDomain.stateChangePropagationStrategy
+			val strategy = vitruvDomain.stateBasedChangeResolutionStrategy
 			val compositeChange = strategy.getChangeSequences(newState, currentState, uuidResolver)
 			return propagateChange(compositeChange)
 		}

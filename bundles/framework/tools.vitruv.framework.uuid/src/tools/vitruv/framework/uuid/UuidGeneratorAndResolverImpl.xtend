@@ -257,7 +257,7 @@ class UuidGeneratorAndResolverImpl implements UuidGeneratorAndResolver {
 		if (((uri.isFile || uri.isPlatform) && uri.existsResourceAtUri) || uri.isPathmap) {
 			val childContents = childResolver.resourceSet.getResource(uri, true).allContents
 			val ourContents = this.resourceSet.getResource(uri, true).allContents
-			while (childContents.hasNext) {
+			while (childContents.hasNext && ourContents.hasNext) {
 				val childObject = childContents.next
 				checkState(ourContents.hasNext, "Cannot find %s in our resource set!", childObject)
 				val ourObject = ourContents.next
