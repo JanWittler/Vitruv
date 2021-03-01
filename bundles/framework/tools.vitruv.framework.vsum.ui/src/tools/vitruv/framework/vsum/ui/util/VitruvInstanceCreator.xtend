@@ -1,6 +1,5 @@
 package tools.vitruv.framework.vsum.ui.util
 
-import tools.vitruv.framework.tuid.TuidManager
 import tools.vitruv.framework.vsum.InternalVirtualModel
 import tools.vitruv.framework.domains.VitruvDomain
 import tools.vitruv.framework.applications.VitruvApplication
@@ -28,7 +27,6 @@ class VitruvInstanceCreator {
 	}
 
 	def boolean createVsumProject() {
-		TuidManager.instance.reinitialize();
 		val virtualModel = createVirtualModel(name);
 		for (project : projectToDomains.keySet) {
 			for (domain : projectToDomains.get(project)) {
@@ -56,7 +54,7 @@ class VitruvInstanceCreator {
 			.withUserInteractor(UserInteractionFactory.instance.createDialogUserInteractor())
 			.withDomains(domains)
 			.withChangePropagationSpecifications(createChangePropagationSpecifications())
-			.build()
+			.buildAndInitialize()
 	}
 
 	private def Iterable<VitruvDomain> getDomains() {

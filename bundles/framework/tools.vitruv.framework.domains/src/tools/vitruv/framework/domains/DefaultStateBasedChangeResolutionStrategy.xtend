@@ -9,15 +9,16 @@ import org.eclipse.emf.compare.EMFCompare
 import org.eclipse.emf.compare.merge.BatchMerger
 import org.eclipse.emf.compare.merge.IMerger
 import org.eclipse.emf.compare.scope.DefaultComparisonScope
-import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl
 import org.eclipse.emf.ecore.util.EcoreUtil
 import tools.vitruv.framework.change.description.TransactionalChange
 import tools.vitruv.framework.change.description.VitruviusChangeFactory
-import tools.vitruv.framework.change.recording.AtomicEmfChangeRecorder
 import tools.vitruv.framework.uuid.UuidGeneratorAndResolver
 import tools.vitruv.framework.uuid.UuidGeneratorAndResolverImpl
+import tools.vitruv.framework.change.recording.ChangeRecorder
+import org.eclipse.emf.ecore.resource.ResourceSet
+import tools.vitruv.framework.uuid.UuidResolver
 
 /**
  * This default strategy for diff based state changes uses EMFCompare to resolve a 
@@ -34,23 +35,16 @@ class DefaultStateBasedChangeResolutionStrategy implements StateBasedChangeResol
 		changeFactory = VitruviusChangeFactory.instance
 	}
 
-	override getChangeSequences(Resource newState, Resource currentState, UuidGeneratorAndResolver resolver) {
-		return resolveChangeSequences(newState, currentState, resolver)
-	}
-
-	override getChangeSequences(EObject newState, EObject currentState, UuidGeneratorAndResolver resolver) {
-		return resolveChangeSequences(newState?.eResource, currentState?.eResource, resolver)
-	}
-
-	def private resolveChangeSequences(Resource newState, Resource currentState, UuidGeneratorAndResolver resolver) {
+	override getChangeSequences(Resource newState, Resource currentState, UuidResolver resolver) {
 		if (resolver === null) {
 			throw new IllegalArgumentException("UUID generator and resolver cannot be null!")
 		} else if (newState === null || currentState === null) {
 			return changeFactory.createCompositeChange(Collections.emptyList)
 		}
 		// Setup resolver and copy state:
-		val uuidGeneratorAndResolver = new UuidGeneratorAndResolverImpl(resolver, resolver.resourceSet, true)
-		val currentStateCopy = currentState.copy
+		val copyResourceSet = new ResourceSetImpl
+		val uuidGeneratorAndResolver = new UuidGeneratorAndResolverImpl(resolver, copyResourceSet)
+		val currentStateCopy = currentState.copyInto(copyResourceSet)
 		// Create change sequences:
 		val diffs = compareStates(newState, currentStateCopy)
 		val vitruvDiffs = replayChanges(diffs, currentStateCopy, uuidGeneratorAndResolver)
@@ -69,27 +63,29 @@ class DefaultStateBasedChangeResolutionStrategy implements StateBasedChangeResol
 	/**
 	 * Replays a list of of EMFCompare differences and records the changes to receive Vitruv change sequences. 
 	 */
-	private def List<TransactionalChange> replayChanges(List<Diff> changesToReplay, Notifier currentState, UuidGeneratorAndResolver resolver) {
+	private def List<? extends TransactionalChange> replayChanges(List<Diff> changesToReplay, Notifier currentState, UuidGeneratorAndResolver resolver) {
 		// Setup recorder:
-		val changeRecorder = new AtomicEmfChangeRecorder(resolver)
-		changeRecorder.addToRecording(currentState)
-		changeRecorder.beginRecording
-		// replay the EMF compare diffs:
-		val mergerRegistry = IMerger.RegistryImpl.createStandaloneInstance()
-		val merger = new BatchMerger(mergerRegistry)
-		merger.copyAllLeftToRight(changesToReplay, new BasicMonitor)
-		// Finish recording:
-		changeRecorder.endRecording
-		return changeRecorder.changes
+		try (val changeRecorder = new ChangeRecorder(resolver)) {
+			changeRecorder.addToRecording(currentState)
+			changeRecorder.beginRecording
+			// replay the EMF compare diffs:
+			val mergerRegistry = IMerger.RegistryImpl.createStandaloneInstance()
+			val merger = new BatchMerger(mergerRegistry)
+			merger.copyAllLeftToRight(changesToReplay, new BasicMonitor)
+			// Finish recording:
+			changeRecorder.endRecording
+			return changeRecorder.changes
+		}
 	}
 
 	/**
 	 * Creates a new resource set, creates a resource and copies the content of the orignal resource.
 	 */
-	private def Resource copy(Resource resource) {
-		val resourceSet = new ResourceSetImpl
-		val copy = resourceSet.createResource(resource.URI)
+	private def Resource copyInto(Resource resource, ResourceSet resourceSet) {
+		val uri = resource.URI
+		val copy = resourceSet.resourceFactoryRegistry.getFactory(uri).createResource(uri)
 		copy.contents.addAll(EcoreUtil.copyAll(resource.contents))
+		resourceSet.resources += copy
 		return copy
 	}
 }
